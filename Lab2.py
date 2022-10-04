@@ -62,16 +62,64 @@ def spiral_matrix(matrix):
     return new_str
 
 
-print(spiral_matrix([['firs'],['n_lt'],['oba_'],['htyp']]))
+print(spiral_matrix([['firs'], ['n_lt'], ['oba_'], ['htyp']]))
 
-#6
+
+# 6
 
 def validate_palindrom(nr):
     str_nr = str(nr)
     reverse_nr = str_nr[::-1]
     return str_nr == reverse_nr
 
+
 print(validate_palindrom(15431))
+
+
+# 7
+def first_number_from_text(string):
+    i = 0
+    a = 0
+    while i < len(string):
+        if '0' <= string[i] <= '9':
+            a = a * 10 + int(string[i])
+        if a != 0 and not '0' <= string[i] <= '9':
+            return a
+        i += 1
+
+
+print(first_number_from_text('An apple is 123 USD 9012'))
+
+
+# 8
+def number_of_bits(nr):
+    nr_of_bits = 0
+    while nr > 0:
+        if nr % 2 == 1:
+            nr_of_bits += 1
+        nr = nr // 2
+    return nr_of_bits
+
+
+print(number_of_bits(24))
+
+
+# 9
+
+def common_letter(string):
+    dictionary = {}
+    string = string.lower()
+    for letter in string:
+        if letter in dictionary:
+            dictionary[letter]+=1
+        else:
+            dictionary[letter]=1
+    most_common_letter=max(dictionary,key=dictionary.get)
+    print(most_common_letter)
+
+
+print(common_letter('an apple is not a tomato'))
+
 
 # 10
 
@@ -83,5 +131,6 @@ def word_count(string):
         if string[i] in " ,;?!.," and string[i + 1] not in " ,;?!.,":
             number_of_words += 1
     return number_of_words
+
 
 print(word_count('Hello, is this thee number of words required????? '))
