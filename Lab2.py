@@ -1,174 +1,152 @@
 # 1
-def gcd(a, b):
-    while b:
-        a, b = b, a % b
-    return a
+def fibo(n):
+    """
+    Returns the first n fibonacci numbers as a list
+    """
+    if n == 1:
+        return [0]
+    if n == 2:
+        return [0, 1]
+    lista = [0, 1]
+    for i in range(2, n):
+        lista.append(lista[i - 1] + lista[i - 2])
+    return lista
 
 
-def multiple_gcd(*nr):
-    'The greatest common divisor of multiple numbers'
-    a = gcd(nr[0], nr[1])
-    for i in range(2, len(nr)):
-        a = gcd(nr[i], a)
-    return a
-
-
-print("Ex: 1")
-print(multiple_gcd(16, 20, 36, 8))
-
+print("Ex1 - Fibonacci ")
+print(fibo(12))
 
 # 2
-def number_of_vowels(string):
-    "returns the number of vowels for a given string"
-    nr_of_vowels = 0
-    for letter in string:
-        if letter in 'aeiouAEIOU':
-            nr_of_vowels += 1
-    return nr_of_vowels
+def is_prime(x):
+    if x <= 1:
+        return False
+    if 2 == x:
+        return True
+    else:
+        for i in range(2, int(x ** 0.5) + 1):
+            if x % i == 0:
+                return False
+    return True
 
 
-print("Ex: 2")
-print(number_of_vowels('ronaldinho_Dumitrescu'))
+def prime_numbers(initial_list):
+    ' Returns the prime numbers of a list '
+    new_list = [nr for nr in initial_list if is_prime(nr)]
+    return new_list
 
+
+print("Ex2 - Only the prime numbers ")
+print(prime_numbers([10, 17, 25, 29, 13, 22, 100]))
 
 # 3
-def occurences(small_string, big_string):
-    "returns the number of occurrences of the first string in the second "
-    return big_string.count(small_string)
+print("Ex3 - Union, Commons, Dif1, Dif2")
 
 
-print("Ex: 3")
-print(occurences('salut', 'salutsalutsalut'))
+def list_operations(list1, list2):
+    'Returns the union, difference and the common members of two lists'
+    global ok, i
+    union = list(list1)
+    for elem in list2:
+        if elem not in union:
+            union.append(elem)
+
+    common = []
+    for elem in list2:
+        if elem in list1:
+            common.append(elem)
+
+    unique_list1 = []
+    for elem in list1:
+        if elem not in list2:
+            unique_list1.append(elem)
+
+    unique_list2 = []
+    for elem in list2:
+        if elem not in list1:
+            unique_list2.append(elem)
+
+    return union, common, unique_list1, unique_list2
 
 
-# 4
+print(list_operations([0, 1, 2, 3, 4], [2, 4, 6, 7, 8]))
+#4
 
-def UpperCamelCase_to_lowercase_with_underscores(string):
-    "Converts a given UpperCamelCase string into lowercase_with_underscores"
-    new_str = ""
-    for i in range(len(string)):
-        if 'A' <= string[i] <= 'Z' and i > 1:
-            new_str = f'{new_str}_{string[i].lower()}'
-        else:
-            new_str = f'{new_str}{string[i]}'
-    return new_str
-
-
-print("Ex: 4")
-print(UpperCamelCase_to_lowercase_with_underscores('LetUsCodeEverybodyDancingAllAround'))
-
-
-# 5
-
-def spiral_matrix(matrix):
-    "Given a list of list of characters it prints the string obtained by going through the overall matrix in spiral order"
-    i = j = 0
-    new_str = []
-    aux_l = l = len(matrix)
-    ok = True
-    while (l):
-        while (j < l - 1):
-            print(matrix[i][j])
-            new_str.append(matrix[i][j])
-            j += 1
-        while (i < l - 1):
-            new_str.append(matrix[i][j])
-            i += 1
-        while (j > aux_l - l):
-            print(matrix[i][j])
-            new_str.append(matrix[i][j])
-            j -= 1
-        while (i > aux_l - l):
-            new_str.append(matrix[i][j])
-            i -= 1
-        l -= 1
-        i += 1
-        j += 1
-    print(new_str)
-
-
-print("Ex: 5")
-print(spiral_matrix([['f', 'i', 'r', 's'], ['n', '_', 'l', 't'], ['o', 'b', 'a', '_'], ['h', 't', 'y', 'p']]))
+#5
 
 
 # 6
-
-def validate_palindrom(nr):
-    "Validates if the given number is a palindrome"
-    str_nr = str(nr)
-    reverse_nr = str_nr[::-1]
-    return str_nr == reverse_nr
-
-
-print("Ex: 6")
-print(validate_palindrom(15451))
-
-
-# 7
-def first_number_from_text(string):
-    "Returns the first number found in the text givne"
-    i = 0
-    a = 0
-    while i < len(string):
-        if '0' <= string[i] <= '9':
-            a = a * 10 + int(string[i])
-        if a != 0 and not '0' <= string[i] <= '9':
-            return a
-        i += 1
+def char_with_n_appearances(n, *all_lists):
+    'Returns only the elements that appear n times in all the lists'
+    final_list = []
+    dictionar = {}
+    for lst in all_lists:
+        for character in lst:
+            if character in dictionar:
+                dictionar[character] += 1
+            else:
+                dictionar[character] = 1
+    for key in dictionar:
+        if dictionar.get(key) == n:
+            final_list.append(key)
+    return final_list
 
 
-print("Ex: 7")
-print(first_number_from_text('An apple is 123 USD 9012'))
+print("Ex6 - char with n appearances")
+print(char_with_n_appearances(2, [1, 2, 3], [2, 3, 4], [4, 5, 6], [4, 1, "test"]))
+
+#7
 
 
 # 8
-def number_of_bits(nr):
-    "Returns how many bits with value 1 the number given as a parameter has"
-    nr_of_bits = 0
-    while nr > 0:
-        if nr % 2 == 1:
-            nr_of_bits += 1
-        nr = nr // 2
-    return nr_of_bits
+def ascii_divisible(x=1, flag=True, *all_lists):
+    'Returns each list with the characters that have ASCII code divisible with x if the flag is true, the others if not'
+    final_list = []
+    for each_list in all_lists:
+        aux_list = []
+        for letter in each_list:
+            if flag:
+                if ord(letter) % x == 0:
+                    aux_list.append(letter)
+            else:
+                if ord(letter) % x != 0:
+                    aux_list.append(letter)
+        final_list.append(aux_list)
+    return final_list
 
 
-print("Ex: 8")
-print(number_of_bits(24))
+print("Ex8 - ASCII")
+print(ascii_divisible(2, False, "test", "hello", "lab002"))
 
-
-# 9
-
-def common_letter(string):
-    "prints the most common letter in the given string "
-    dictionary = {}
-    string = string.lower()
-    for letter in string:
-        if letter in dictionary:
-            dictionary[letter] += 1
-        elif letter != ' ':
-            dictionary[letter] = 1
-    print(dictionary)
-    max_nr_of_occurences = max(dictionary.values())
-    letters_with_most_occurences = {k for k, v in dictionary.items() if v == max_nr_of_occurences}
-    print(letters_with_most_occurences)
-
-
-print("Ex: 9")
-common_letter('an apple is not a tomato')
+#9
 
 
 # 10
+def zip_tuple1(*lists):
+    final_list = []
+    most_elem = max([len(x) for x in lists])
 
-def word_count(string):
-    "Returns the number of words in the given string"
-    number_of_words = 0
-    if string:
-        number_of_words += 1
-    for i in range(1, len(string) - 1):
-        if string[i] in " ,;?!.," and string[i + 1] not in " ,;?!.,":
-            number_of_words += 1
-    return number_of_words
+    for i in range(most_elem):
+        position_list = []
+        for lst in lists:
+            while len(lst) < most_elem:
+                lst.append(None)
+            position_list.append(lst[i])
+        final_list.append(tuple(position_list))
+    return final_list
 
 
-print("Ex: 10")
-print(word_count('Hello, is this thee number of words required????? '))
+print("Ex 10 - Zip")
+print(zip_tuple1([1, 2, 3], [5, 6, 7], ["a", "b"]))
+
+
+# 11
+
+def sort_by_3rd_character_of_second_elem(*tuple):
+    'Returns the tuples sorted by the 3rd char of the second elem of each tuple'
+    return sorted(tuple, key=lambda x: x[1][2])
+
+
+print("Ex11 - sort by 3rd char tuple")
+print(sort_by_3rd_character_of_second_elem(('abc', 'bcd'), ('abc', 'zza')))
+
+#12
