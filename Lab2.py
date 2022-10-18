@@ -16,6 +16,7 @@ def fibo(n):
 print("Ex1 - Fibonacci ")
 print(fibo(12))
 
+
 # 2
 def is_prime(x):
     if x <= 1:
@@ -69,11 +70,32 @@ def list_operations(list1, list2):
 
 
 print(list_operations([0, 1, 2, 3, 4], [2, 4, 6, 7, 8]))
-#4
-
-#5
 
 
+# 4
+def compose(musical_notes, moves, start_position):
+    'Returns the musical notes obtained by moving through a list with a list of moves'
+    song = []
+    l=len(musical_notes)
+    song.append(musical_notes[start_position])
+    for move in moves:
+        start_position+=move
+        song.append(musical_notes[start_position%l])
+    return song
+print("Ex4 - Song created with musical notes")
+print(compose(["do", "re", "mi", "fa", "sol"], [1, -3, 4, 2], 2))
+# 5
+def replace_elem(matrix):
+    'Returns the matrix with zeros under the main diagonal'
+    zeros=-1
+    for elem in matrix:
+        zeros+=1
+        for index,each_elem in enumerate(elem):
+            if index<zeros:
+                elem[index]=0
+    return matrix
+print("Ex5 - Matrix with zeros under the main diagonal")
+print(replace_elem([[1,2,3,4],[5,6,7,8],[10,10,10,10]]))
 # 6
 def char_with_n_appearances(n, *all_lists):
     'Returns only the elements that appear n times in all the lists'
@@ -94,9 +116,29 @@ def char_with_n_appearances(n, *all_lists):
 print("Ex6 - char with n appearances")
 print(char_with_n_appearances(2, [1, 2, 3], [2, 3, 4], [4, 5, 6], [4, 1, "test"]))
 
-#7
 
+# 7
+def validate_palindrom(nr):
+    "Validates if the given number is a palindrome"
+    str_nr = str(nr)
+    reverse_nr = str_nr[::-1]
+    return str_nr == reverse_nr
 
+def palindroms(numbers):
+    "Returns the number of palindrome numbers and the greatest palindrome from a given list"
+    final_list=[]
+    max_palindrome = 0
+    palindrome_counter=0
+    for number in numbers:
+        if validate_palindrom(number):
+            palindrome_counter+=1
+            if number>max_palindrome:
+                max_palindrome=number
+    final_list.append(palindrome_counter)
+    final_list.append(max_palindrome)
+    return(tuple(final_list))
+print('Ex 7 - nr of palindromes and the greatest palindrome')
+print(palindroms([10,11,171,121,333,5005,404,9]))
 # 8
 def ascii_divisible(x=1, flag=True, *all_lists):
     'Returns each list with the characters that have ASCII code divisible with x if the flag is true, the others if not'
@@ -114,12 +156,33 @@ def ascii_divisible(x=1, flag=True, *all_lists):
     return final_list
 
 
-print("Ex8 - ASCII")
+print("Ex 8 - ASCII")
 print(ascii_divisible(2, False, "test", "hello", "lab002"))
 
-#9
 
+# 9
+def can_not_see(seats):
+    "Returns the seats that have a smaller value than any seat in the front row "
+    unlucky=[]
+    for index,row in enumerate(seats):
+        for column, value in enumerate(row):
+            aux=index-1
+            while(aux>=0):
+                if(seats[aux][column]>value):
+                    aux=0
+                    unlucky.append((index,column))
+                aux-=1
+    return unlucky
 
+print("Ex 9 - Stadium")
+
+print(can_not_see([[1, 2, 3, 2, 1, 1],
+
+[2, 4, 4, 3, 7, 2],
+
+[5, 5, 2, 5, 6, 4],
+
+[6, 6, 7, 6, 7, 5]] ))
 # 10
 def zip_tuple1(*lists):
     final_list = []
@@ -146,7 +209,25 @@ def sort_by_3rd_character_of_second_elem(*tuple):
     return sorted(tuple, key=lambda x: x[1][2])
 
 
-print("Ex11 - sort by 3rd char tuple")
+print("Ex 11 - sort by 3rd char tuple")
 print(sort_by_3rd_character_of_second_elem(('abc', 'bcd'), ('abc', 'zza')))
 
-#12
+# 12
+def Rhymes(list):
+    "Returns the words from the list grouped by rhyme"
+    new_list = []
+    for word in list:
+        small_list = []
+        last_2_chars = word[-1] + word[-2]
+        #list.remove(word)
+        for word2 in list:
+            last_2_chars_second = word2[-1] + word2[-2]
+            if last_2_chars_second == last_2_chars:
+                small_list += [word2]
+               # list.remove(word2)
+        if new_list.count(small_list) == 0:
+            new_list += [small_list]
+    return new_list
+
+print("Ex 12 - Ryhmes")
+print(Rhymes(['ana', 'banana', 'carte', 'arme', 'parte']))
