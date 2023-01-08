@@ -1,12 +1,22 @@
-import pygame
 import numpy as np
-import random
+import pygame
 from pygame import gfxdraw
-BOARD_WIDTH = 1000
-BOARD_COLOR = (255, 211, 155)
-BLACK = (0, 0, 0)
-pygame.init()
-screen = pygame.display.set_mode((BOARD_WIDTH, BOARD_WIDTH))
+import itertools
+import networkx as nx
+import sys
+
+
+def is_valid_move(col, row, board, color_turn):  # game logic
+    """
+    :param color_turn: the color who puts the piece
+    :param col: column on which the piece is placed
+    :param row: row on which the piece is placed
+    :param board: the board of the game (with all the pieces placed)
+    :return: True if the piece can be placed, False otherwise
+    """
+    if col < 0 or col >= size or row < 0 or row >= size:
+        return False
+    return board[col][row] == 0
 
 
 def gridline_coordinates_optim(nr_of_rows):  # graphical interface
@@ -61,6 +71,9 @@ class Game:
         self.start_points, self.end_points = gridline_coordinates_optim(self.size)
         self.points = zip(self.start_points, self.end_points)
         self.opponent = 0  # 1 - player, 2 - BOT
+        self.first_event = True
+        self.captured_stones_by_black = 0
+        self.captured_stones_by_white = 0
 
     # graphic functions
 
@@ -77,6 +90,7 @@ class Game:
         self.font = pygame.font.SysFont("Arial", 40)
 
         # two utils functions to work with board coordinates
+
     def remake_board(self):  # graphical interface
         """
         clears the screen and draws the gridlines with numbering and lettering
@@ -106,6 +120,8 @@ class Game:
             self.screen.blit(text, (game_size - border + 30, border - 15 + self.interval * index))
             self.screen.blit(text, (border - 60, border - 15 + self.interval * index))
         pygame.display.flip()
+
+    # two utils functions to work with board coordinates
     def coordinates_to_col_row(self, x, y):
         """
         :param x: the float coordinate of the board on the x axis
@@ -125,6 +141,77 @@ class Game:
         :return: the coordinates of the row and column given to be used in draws
         """
         return int(border + col * self.interval), int(border + row * self.interval)
+
+    def group_with_no_liberties(self, group):  # game logic
+        """
+        :param group: group of stones that need to be verified
+        :return: True if each stone in the group has no liberties, false if at least one stone has at least one liberty
+        """
+        for x, y in group:
+            if x > 0 and not self.board[x - 1][y] or x < size - 1 and not self.board[x + 1][y]:
+                return False
+            if y > 0 and not self.board[x][y - 1] or y < size - 1 and not self.board[x][y + 1]:
+                return False
+        return True
+
+    def capture_group(self, self_color, list_of_groups):  # game logic
+        """
+        :param self_color: the color that captures
+        :param list_of_groups: all the groups of the other color that are verified to be captured
+        the groups from the list of groups that have no liberties are captured
+        """
+        for stone_group in list_of_groups:
+            if self.group_with_no_liberties(stone_group):
+                for i, j in stone_group:
+                    self.board[i, j] = 3
+                    if self_color == 1:  # black
+                        self.captured_stones_by_black += len(stone_group)
+                    else:
+                        self.captured_stones_by_white += len(stone_group)
+
+    def get_groups_of_stones(self, color):  # game logic
+        """
+        :param board: the matrix board with all the pieces placed on it
+        :param color: the color whose pieces are searched in the graph for making groups/components
+        :return: list of list of coordinates of the groups/components of pieces
+        """
+        x, y = np.where(self.board == color)
+        dimensions = [size, size]
+        graph = nx.grid_graph(dimensions)
+        stones = set(zip(x, y))
+        # print(stones)
+        all_spaces = set(itertools.product(range(size), range(size)))
+        graph.remove_nodes_from(all_spaces - stones)
+        components = nx.connected_components(graph)
+        return components
+
+    def handle_click(self):  # user interaction
+        """
+         function that handles clicks;
+         based on user's click it verifies if the click is correct and then updates the board accordingly;
+         then it calls the functions for the game logic - the groups function, capture function, draw function
+        """
+        if self.first_event:
+            self.first_event = False
+            return
+        x, y = pygame.mouse.get_pos()
+        col, row = self.coordinates_to_col_row(x, y)
+        x, y = self.col_row_to_coordinates(col, row)
+        self.last_piece = [x, y]
+        if not is_valid_move(col, row, self.board, self.color_turn):
+            return
+        self.board[col, row] = 2  # white turn
+        self_color = 2
+        other_color = 1
+        if self.color_turn:  # black turn actually
+            self.board[col, row] = 1
+            self_color = 1
+            other_color = 2
+        list_of_groups = list(self.get_groups_of_stones(other_color))
+        self.capture_group(self_color, list_of_groups)
+        self.color_turn = (self.color_turn + 1) % 2
+        self.draw()
+
     def turn_info(self):  # graphical interface
         """
         draws infos about whose turn is
@@ -142,7 +229,7 @@ class Game:
         txt = self.font.render(up_message, True, BLACK)
         self.screen.blit(txt, turn_position)
 
-    def draw_stones(self, color, stone_size):
+    def draw_stones(self, color, stone_size):  # graphical interface
         """
         :param color: color of the stone to be drawn
         :param stone_size: stone size
@@ -206,9 +293,31 @@ class Game:
                         return 2  # bot
             pygame.display.update()
 
+    def is_game_over(self):  # game logic
+        """
+        Checks if the game is over (if the board still has any blank spots)
+        :return: True if the game is over, False otherwise
+        """
+        x, y = np.where(self.board == 0)
+        if len(x):
+            return False
+        return True
+
+    def event_displayed(self, event):  # game logic
+        """
+        :param event: the event produced by the user
+        how the game reacts because of the user event
+        """
+        if event.type == pygame.QUIT:
+            sys.exit()
+        elif event.type == pygame.MOUSEBUTTONUP:
+            self.handle_click()
+        elif event.type == pygame.KEYUP and event.key == pygame.K_p:
+            self.color_turn = (self.color_turn + 1) % 2
+            self.draw()
+
 
 if __name__ == "__main__":
-    # TODO choose color when against bot
     game_size = 1025
     border = 125
     WHITE = (255, 255, 255)
@@ -222,4 +331,13 @@ if __name__ == "__main__":
     g.draw()
     if opponent == 1:  # player :
         # function to establish the way the game will be played : AI or opponent
+        while not g.is_game_over():
+            events = pygame.event.get()
+            for event in events:
+                g.event_displayed(event)
         print(1)
+    elif opponent ==2:  #bot :
+        #todo bot
+        #manage game with bot
+        print(3)
+    #todo winner
