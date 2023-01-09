@@ -1,7 +1,6 @@
 import numpy as np
 import pygame
 from pygame import gfxdraw
-import itertools
 import networkx as nx
 import random
 import sys
@@ -9,13 +8,13 @@ import sys
 
 def random_move(board, color_turn):  # bot logic
     """
-    :param color_turn: whose color turn it is
+    param color_turn: whose color turn it is
     :param board: the board of the game (with all the pieces placed)
     :return: a random verified move for the bot
     """
     x = random.randint(0, size - 1)
     y = random.randint(0, size - 1)
-    while not is_valid_move(x, y, board, color_turn):
+    while not_valid_move(x, y, board, color_turn):
         x = random.randint(0, size - 1)
         y = random.randint(0, size - 1)
     return x, y
@@ -46,7 +45,7 @@ def gridline_coordinates_optim(nr_of_rows):  # graphical interface
     return start_points, end_points
 
 
-def is_valid_move(col, row, board, color_turn):  # game logic
+def not_valid_move(col, row, board, color_turn):  # game logic
     """
     :param color_turn: the color who puts the piece
     :param col: column on which the piece is placed
@@ -55,8 +54,8 @@ def is_valid_move(col, row, board, color_turn):  # game logic
     :return: True if the piece can be placed, False otherwise
     """
     if col < 0 or col >= size or row < 0 or row >= size:
-        return False
-    return board[col][row] == 0
+        return True
+    return not board[col][row] == 0
 
 
 def create_button(screen, position, text, font):  # graphical interface
@@ -80,10 +79,11 @@ class Game:
     captured_stones_by_black: int
     captured_stones_by_white: int
 
-    def __init__(self, size):  # adaugat schimbat putin
+    def __init__(self, size, game_size):  
         self.board = np.zeros((size, size))
         self.color_turn = 1  # black - 1 , white - 0
-        self.interval = (game_size - 2 * border) / (size - 1)
+        self.game_size = game_size
+        self.interval = (self.game_size - 2 * border) / (size - 1)
         self.size = size
         self.start_points, self.end_points = gridline_coordinates_optim(self.size)
         self.points = zip(self.start_points, self.end_points)
@@ -92,35 +92,27 @@ class Game:
         self.captured_stones_by_black = 0
         self.captured_stones_by_white = 0
         self.first_event = True
-
-    # graphic functions
-
-    def init_pygame(self):  # graphical interface
-        """
-        function for game initialising - screen, icon, name of the screen, font
-        """
+        self.dimensions = [size, size]
         pygame.init()
         pygame.display.set_caption('Game of GO')
-        Icon = pygame.image.load("icon.png")
-        pygame.display.set_icon(Icon)
+        icon = pygame.image.load("icon.png")
+        pygame.display.set_icon(icon)
         screen = pygame.display.set_mode((game_size, game_size))
         self.screen = screen
         self.font = pygame.font.SysFont("Arial", 40)
 
     # two utils functions to work with board coordinates
-    def coordinates_to_col_row(self, x, y):
+    def coordinates_change(self, x, y):
         """
         :param x: the float coordinate of the board on the x axis
         :param y: the float coordinate of the board on the y axis
         :return: the row and column integers associated with the given coordinates to be used in game logic
         """
-        x_dist = x - border
-        y_dist = y - border
-        col_loc = round(x_dist / self.interval)
-        row_loc = round(y_dist / self.interval)
+        col_loc = round(x / self.interval)
+        row_loc = round(y / self.interval)
         return int(col_loc), int(row_loc)
 
-    def col_row_to_coordinates(self, col, row):
+    def board_axis_change(self, col, row):
         """
         :param col: the integer column that has to be converted into coordinate
         :param row: the integer row that has to be converted into coordinate
@@ -170,7 +162,7 @@ class Game:
         :return: a valid position for the bot in the liberty of the last piece put by the player
         """
         x, y = self.last_piece[0], self.last_piece[1]
-        col, row = self.coordinates_to_col_row(x, y)
+        col, row = self.coordinates_change(x - border, y - border)
         # print(col, row)
         col -= 1
         row -= 1
@@ -179,7 +171,7 @@ class Game:
         possible_moves = [[new_col, new_row] for new_col in range(col, max_col) for new_row in range(row, max_row)]
         random.shuffle(possible_moves)
         for move in possible_moves:
-            if is_valid_move(move[0], move[1], self.board, self.color_turn):
+            if not not_valid_move(move[0], move[1], self.board, self.color_turn):
                 return move[0], move[1]
 
     def remake_board(self):  # graphical interface
@@ -233,10 +225,10 @@ class Game:
         for stone_group in list_of_groups:
             if self.group_with_no_liberties(stone_group):
                 for i, j in stone_group:
-                    self.board[i, j] = 3
+                    self.board[i, j] = -1
                     if self_color == 1:  # black
                         self.captured_stones_by_black += len(stone_group)
-                    else:
+                    elif self_color == 2:
                         self.captured_stones_by_white += len(stone_group)
 
     def get_groups_of_stones(self, color):  # game logic
@@ -245,13 +237,10 @@ class Game:
         :param color: the color whose pieces are searched in the graph for making groups/components
         :return: list of list of coordinates of the groups/components of pieces
         """
-        x, y = np.where(self.board == color)
-        dimensions = [size, size]
-        graph = nx.grid_graph(dimensions)
-        stones = set(zip(x, y))
-        # print(stones)
-        all_spaces = set(itertools.product(range(size), range(size)))
-        graph.remove_nodes_from(all_spaces - stones)
+        graph = nx.grid_graph(self.dimensions)
+        x_color, y_color = np.where(self.board == color)
+        x_open, y_open = np.where(self.board != color)
+        graph.remove_nodes_from(set(zip(x_open, y_open)) - set(zip(x_color, y_color)))
         components = nx.connected_components(graph)
         return components
 
@@ -261,26 +250,29 @@ class Game:
          based on user's click it verifies if the click is correct and then updates the board accordingly;
          then it calls the functions for the game logic - the groups function, capture function, draw function
         """
-        if self.first_event:
-            self.first_event = False
-            return
-        x, y = pygame.mouse.get_pos()
-        col, row = self.coordinates_to_col_row(x, y)
-        x, y = self.col_row_to_coordinates(col, row)
-        self.last_piece = [x, y]
-        if not is_valid_move(col, row, self.board, self.color_turn):
-            return
-        self.board[col, row] = 2  # white turn
-        self_color = 2
-        other_color = 1
-        if self.color_turn:  # black turn actually
-            self.board[col, row] = 1
-            self_color = 1
-            other_color = 2
-        list_of_groups = list(self.get_groups_of_stones(other_color))
-        self.capture_group(self_color, list_of_groups)
-        self.color_turn = (self.color_turn + 1) % 2
-        self.draw()
+        try:
+            if self.first_event:
+                self.first_event = False
+                return
+            x, y = pygame.mouse.get_pos()
+            col, row = self.coordinates_change(x - border, y - border)
+            x, y = self.board_axis_change(col, row)
+            self.last_piece = [x, y]
+            if not_valid_move(col, row, self.board, self.color_turn):
+                return
+            self.board[col, row] = 2  # white turn
+            self_color = 2
+            other_color = 1
+            if self.color_turn:  # black turn actually
+                self.board[col, row] = 1
+                self_color = 1
+                other_color = 2
+            list_of_groups = list(self.get_groups_of_stones(other_color))
+            self.capture_group(self_color, list_of_groups)
+            self.color_turn = (self.color_turn + 1) % 2
+            self.draw()
+        except Exception as e:
+            print(str(e))
 
     def bot_moves(self):  # bot logic
         """
@@ -311,14 +303,11 @@ class Game:
         """
         # text for score and turn info
         turn_position = (game_size / 2 - 80, 10)
-        if self.opponent == 1:  # player
-            up_message = f"{'Black' if self.color_turn else 'White'} places."
-        else:  # bot
-
-            if self.color_turn:
-                up_message = "Black places. "
-            else:
-                up_message = 'BOT places. '
+        up_message = 'Black places.'
+        if self.opponent == 1 and not self.color_turn:  # player
+            up_message = 'White places.'
+        elif self.opponent == 2 and not self.color_turn:  # bot
+            up_message = 'BOT places. '
         txt = self.font.render(up_message, True, BLACK)
         self.screen.blit(txt, turn_position)
 
@@ -329,8 +318,8 @@ class Game:
         draws all the stone for the specified color with the specified size
         """
         for s_col, s_row in zip(*np.where(self.board == color)):
-            x, y = self.col_row_to_coordinates(s_col, s_row)
-            if color == 1:
+            x, y = self.board_axis_change(s_col, s_row)
+            if 1 == color:
                 gfxdraw.aacircle(self.screen, x, y, stone_size, BLACK)
                 gfxdraw.filled_circle(self.screen, x, y, stone_size, BLACK)
             elif color == 2:
@@ -339,7 +328,7 @@ class Game:
 
     def draw(self):  # graphical interface
         """
-         function that calls every other draw functions to draw the empty board, stones, turn info and other details
+        function that calls every other draw functions to draw the empty board, stones, turn info and other details
         """
         stone_size = 20
         self.remake_board()
@@ -424,8 +413,7 @@ if __name__ == "__main__":
     GREEN = (51, 102, 0)
     BLACK = (0, 0, 0)
     size = 19
-    g = Game(size)
-    g.init_pygame()
+    g = Game(size, game_size)
     opponent = g.choose_opponent()
     first_event = False
     g.draw()
@@ -439,4 +427,3 @@ if __name__ == "__main__":
         while not g.is_game_over():
             g.manage_game_with_bot()
     g.winner()
-
