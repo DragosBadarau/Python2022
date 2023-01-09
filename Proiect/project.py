@@ -3,20 +3,22 @@ import pygame
 from pygame import gfxdraw
 import itertools
 import networkx as nx
+import random
 import sys
 
 
-def is_valid_move(col, row, board, color_turn):  # game logic
+def random_move(board, color_turn):  # bot logic
     """
-    :param color_turn: the color who puts the piece
-    :param col: column on which the piece is placed
-    :param row: row on which the piece is placed
+    :param color_turn: whose color turn it is
     :param board: the board of the game (with all the pieces placed)
-    :return: True if the piece can be placed, False otherwise
+    :return: a random verified move for the bot
     """
-    if col < 0 or col >= size or row < 0 or row >= size:
-        return False
-    return board[col][row] == 0
+    x = random.randint(0, size - 1)
+    y = random.randint(0, size - 1)
+    while not is_valid_move(x, y, board, color_turn):
+        x = random.randint(0, size - 1)
+        y = random.randint(0, size - 1)
+    return x, y
 
 
 def gridline_coordinates_optim(nr_of_rows):  # graphical interface
@@ -44,6 +46,19 @@ def gridline_coordinates_optim(nr_of_rows):  # graphical interface
     return start_points, end_points
 
 
+def is_valid_move(col, row, board, color_turn):  # game logic
+    """
+    :param color_turn: the color who puts the piece
+    :param col: column on which the piece is placed
+    :param row: row on which the piece is placed
+    :param board: the board of the game (with all the pieces placed)
+    :return: True if the piece can be placed, False otherwise
+    """
+    if col < 0 or col >= size or row < 0 or row >= size:
+        return False
+    return board[col][row] == 0
+
+
 def create_button(screen, position, text, font):  # graphical interface
     """
     :param font: the font used to write the text
@@ -62,8 +77,10 @@ def create_button(screen, position, text, font):  # graphical interface
 
 
 class Game:
+    captured_stones_by_black: int
+    captured_stones_by_white: int
 
-    def __init__(self, size):
+    def __init__(self, size):  # adaugat schimbat putin
         self.board = np.zeros((size, size))
         self.color_turn = 1  # black - 1 , white - 0
         self.interval = (game_size - 2 * border) / (size - 1)
@@ -71,9 +88,10 @@ class Game:
         self.start_points, self.end_points = gridline_coordinates_optim(self.size)
         self.points = zip(self.start_points, self.end_points)
         self.opponent = 0  # 1 - player, 2 - BOT
-        self.first_event = True
+        self.last_piece = None
         self.captured_stones_by_black = 0
         self.captured_stones_by_white = 0
+        self.first_event = True
 
     # graphic functions
 
@@ -89,7 +107,80 @@ class Game:
         self.screen = screen
         self.font = pygame.font.SysFont("Arial", 40)
 
-        # two utils functions to work with board coordinates
+    # two utils functions to work with board coordinates
+    def coordinates_to_col_row(self, x, y):
+        """
+        :param x: the float coordinate of the board on the x axis
+        :param y: the float coordinate of the board on the y axis
+        :return: the row and column integers associated with the given coordinates to be used in game logic
+        """
+        x_dist = x - border
+        y_dist = y - border
+        col_loc = round(x_dist / self.interval)
+        row_loc = round(y_dist / self.interval)
+        return int(col_loc), int(row_loc)
+
+    def col_row_to_coordinates(self, col, row):
+        """
+        :param col: the integer column that has to be converted into coordinate
+        :param row: the integer row that has to be converted into coordinate
+        :return: the coordinates of the row and column given to be used in draws
+        """
+        return int(border + col * self.interval), int(border + row * self.interval)
+
+    def choose_opponent(self):  # user interaction
+        """
+        press b for bot or p for player
+        or click to choose your adversary
+        esc to quit
+        :return: 0 for quit, 1 for player, 2 for bot
+        """
+        self.screen.fill((255, 211, 155))
+        bigger_font = pygame.font.SysFont("Arial", 50)
+        text = bigger_font.render('Choose your adversary ! ', False, BLACK)
+        self.screen.blit(text, (300, 100))
+        b1 = create_button(self.screen, (300, 300), "PLAYER", bigger_font)
+        b2 = create_button(self.screen, (600, 300), "BOT", bigger_font)
+        while True:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    return 0
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_ESCAPE:
+                        pygame.quit()
+                        return 0
+                    if event.key == pygame.K_b:
+                        self.opponent = 2
+                        return 2  # bot
+                    if event.key == pygame.K_p:
+                        self.opponent = 1
+                        return 1  # player
+                if event.type == pygame.MOUSEBUTTONDOWN:
+                    if b1.collidepoint(pygame.mouse.get_pos()):
+                        self.opponent = 1
+                        return 1  # player
+                    elif b2.collidepoint(pygame.mouse.get_pos()):
+                        self.opponent = 2
+                        return 2  # bot
+            pygame.display.update()
+
+    def nearly_random(self):  # bot logic
+        """
+        :return: a valid position for the bot in the liberty of the last piece put by the player
+        """
+        x, y = self.last_piece[0], self.last_piece[1]
+        col, row = self.coordinates_to_col_row(x, y)
+        # print(col, row)
+        col -= 1
+        row -= 1
+        max_col = col + 3
+        max_row = row + 3
+        possible_moves = [[new_col, new_row] for new_col in range(col, max_col) for new_row in range(row, max_row)]
+        random.shuffle(possible_moves)
+        for move in possible_moves:
+            if is_valid_move(move[0], move[1], self.board, self.color_turn):
+                return move[0], move[1]
 
     def remake_board(self):  # graphical interface
         """
@@ -120,27 +211,6 @@ class Game:
             self.screen.blit(text, (game_size - border + 30, border - 15 + self.interval * index))
             self.screen.blit(text, (border - 60, border - 15 + self.interval * index))
         pygame.display.flip()
-
-    # two utils functions to work with board coordinates
-    def coordinates_to_col_row(self, x, y):
-        """
-        :param x: the float coordinate of the board on the x axis
-        :param y: the float coordinate of the board on the y axis
-        :return: the row and column integers associated with the given coordinates to be used in game logic
-        """
-        x_dist = x - border
-        y_dist = y - border
-        col_loc = round(x_dist / self.interval)
-        row_loc = round(y_dist / self.interval)
-        return int(col_loc), int(row_loc)
-
-    def col_row_to_coordinates(self, col, row):
-        """
-        :param col: the integer column that has to be converted into coordinate
-        :param row: the integer row that has to be converted into coordinate
-        :return: the coordinates of the row and column given to be used in draws
-        """
-        return int(border + col * self.interval), int(border + row * self.interval)
 
     def group_with_no_liberties(self, group):  # game logic
         """
@@ -212,6 +282,29 @@ class Game:
         self.color_turn = (self.color_turn + 1) % 2
         self.draw()
 
+    def bot_moves(self):  # bot logic
+        """
+        how the bot plays; first he moves, then he captures (if so) and the turn changes
+        """
+        # col, row = random_move(self.board)
+        if self.last_piece:
+            col, row = self.nearly_random()
+        else:
+            col, row = random_move(self.board, 0)
+        if self.color_turn:
+            self.board[col, row] = 1
+            self_color = 1
+            other_color = 2
+        else:
+            self.board[col, row] = 2
+            self_color = 2
+            other_color = 1
+            list_of_groups = list(self.get_groups_of_stones(other_color))
+            self.capture_group(self_color, list_of_groups)
+
+        self.color_turn = (self.color_turn + 1) % 2
+        self.draw()
+
     def turn_info(self):  # graphical interface
         """
         draws infos about whose turn is
@@ -229,7 +322,7 @@ class Game:
         txt = self.font.render(up_message, True, BLACK)
         self.screen.blit(txt, turn_position)
 
-    def draw_stones(self, color, stone_size):  # graphical interface
+    def draw_stones(self, color, stone_size):
         """
         :param color: color of the stone to be drawn
         :param stone_size: stone size
@@ -252,48 +345,18 @@ class Game:
         self.remake_board()
         self.draw_stones(1, stone_size)
         self.draw_stones(2, stone_size)
+        if self.last_piece:
+            if self.color_turn:
+                gfxdraw.aacircle(self.screen, self.last_piece[0], self.last_piece[1], stone_size - 10, BLACK)
+                # gfxdraw.filled_circle(self.screen, self.last_piece[0], self.last_piece[1], stone_size - 10, BLACK)
+            else:
+                gfxdraw.aacircle(self.screen, self.last_piece[0], self.last_piece[1], stone_size - 10, WHITE)
+                # gfxdraw.filled_circle(self.screen, self.last_piece[0], self.last_piece[1], stone_size - 10, WHITE)
         self.turn_info()
         print(self.board)
         pygame.display.flip()
 
-    def choose_opponent(self):  # user interaction
-        """
-        press b for bot or p for player
-        or click to choose your adversary
-        esc to quit
-        :return: 0 for quit, 1 for player, 2 for bot
-        """
-        self.screen.fill((255, 211, 155))
-        bigger_font = pygame.font.SysFont("Arial", 50)
-        text = bigger_font.render('Choose your adversary ! ', False, BLACK)
-        self.screen.blit(text, (300, 100))
-        b1 = create_button(self.screen, (300, 300), "PLAYER", bigger_font)
-        b2 = create_button(self.screen, (600, 300), "BOT", bigger_font)
-        while True:
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    pygame.quit()
-                    return 0
-                if event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_ESCAPE:
-                        pygame.quit()
-                        return 0
-                    if event.key == pygame.K_b:
-                        self.opponent = 2
-                        return 2  # bot
-                    if event.key == pygame.K_p:
-                        self.opponent = 1
-                        return 1  # player
-                if event.type == pygame.MOUSEBUTTONDOWN:
-                    if b1.collidepoint(pygame.mouse.get_pos()):
-                        self.opponent = 1
-                        return 1  # player
-                    elif b2.collidepoint(pygame.mouse.get_pos()):
-                        self.opponent = 2
-                        return 2  # bot
-            pygame.display.update()
-
-    def is_game_over(self):  # game logic
+    def is_game_over(self):
         """
         Checks if the game is over (if the board still has any blank spots)
         :return: True if the game is over, False otherwise
@@ -302,6 +365,20 @@ class Game:
         if len(x):
             return False
         return True
+
+    def winner(self):
+        """
+        Checks how many pieces white and black has and compares the numbers
+        :return: 0 if black wins, 1 if white wins
+        """
+        x, y = np.where(self.board == 1)
+        self.captured_stones_by_black += len(x)
+        x, y = np.where(self.board == 2)
+        self.captured_stones_by_white += len(x)
+        if self.captured_stones_by_black < self.captured_stones_by_white:
+            print("White wins the game!")
+        else:
+            print("Black wins the game!")
 
     def event_displayed(self, event):  # game logic
         """
@@ -316,6 +393,28 @@ class Game:
             self.color_turn = (self.color_turn + 1) % 2
             self.draw()
 
+    def manage_game_with_bot(self, self_color=1):  # bot logic
+        """
+        :param self_color: the player's color
+        :return: how the game reacts because of the user event if his turn or bot moves
+        """
+        if self_color == 1 and self.color_turn or self_color == 2 and not self.color_turn:
+            events = pygame.event.get()
+            for event in events:
+                if event.type == pygame.QUIT:
+                    # print("quit")
+                    sys.exit()
+                if event.type == pygame.MOUSEBUTTONUP:
+                    # print("mouse")
+                    self.handle_click()
+                if event.type == pygame.KEYUP and event.key == pygame.K_p:
+                    # print("p")
+                    self.color_turn = (self.color_turn + 1) % 2
+                    self.draw()
+        else:
+            pygame.time.wait(500)
+            self.bot_moves()
+
 
 if __name__ == "__main__":
     game_size = 1025
@@ -328,6 +427,7 @@ if __name__ == "__main__":
     g = Game(size)
     g.init_pygame()
     opponent = g.choose_opponent()
+    first_event = False
     g.draw()
     if opponent == 1:  # player :
         # function to establish the way the game will be played : AI or opponent
@@ -335,9 +435,8 @@ if __name__ == "__main__":
             events = pygame.event.get()
             for event in events:
                 g.event_displayed(event)
-        print(1)
-    elif opponent ==2:  #bot :
-        #todo bot
-        #manage game with bot
-        print(3)
-    #todo winner
+    elif opponent == 2:  # bot :
+        while not g.is_game_over():
+            g.manage_game_with_bot()
+    g.winner()
+
